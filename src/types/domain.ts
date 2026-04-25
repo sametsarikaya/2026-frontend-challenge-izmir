@@ -43,7 +43,7 @@ export interface RecordFlag {
 }
 
 export interface RawSubmissionAnswers {
-  [questionId: string]: { name?: string; answer?: unknown } | undefined
+  [questionId: string]: { name?: string; text?: string; answer?: unknown } | undefined
 }
 
 export interface JotformSubmission {

@@ -22,20 +22,47 @@ function parseGeo(rawValue: string | undefined): Geo | null {
   return { lat: parts[0], lng: parts[1] }
 }
 
+function answerToString(raw: unknown): string {
+  if (raw === null || raw === undefined) return ''
+  if (typeof raw === 'string' || typeof raw === 'number') return String(raw)
+  return ''
+}
+
+function labelKey(text: string): string {
+  return normalizeText(text)
+    .replace(/\s+/g, '')
+    .slice(0, 40)
+}
+
 function readAnswers(submission: JotformSubmission): Record<string, string> {
   const result: Record<string, string> = {}
   for (const entry of Object.values(submission.answers)) {
-    if (!entry || typeof entry.name !== 'string') continue
-    const answerValue = entry.answer
-    if (answerValue === null || answerValue === undefined) {
-      result[entry.name] = ''
-    } else if (typeof answerValue === 'string' || typeof answerValue === 'number') {
-      result[entry.name] = String(answerValue)
-    } else {
-      result[entry.name] = ''
+    if (!entry) continue
+    const value = answerToString(entry.answer)
+    if (typeof entry.name === 'string' && entry.name) {
+      result[entry.name] = value
+    }
+    if (typeof entry.text === 'string' && entry.text) {
+      const lk = labelKey(entry.text)
+      if (lk && !(lk in result)) result[lk] = value
     }
   }
+  if (import.meta.env.DEV && !_loggedSources.has(submission.id.slice(0, 6))) {
+    _loggedSources.add(submission.id.slice(0, 6))
+    // eslint-disable-next-line no-console
+    console.log('[normalizer] available keys:', Object.keys(result))
+  }
   return result
+}
+
+const _loggedSources = new Set<string>()
+
+function pick(values: Record<string, string>, ...keys: string[]): string {
+  for (const key of keys) {
+    const v = values[key]
+    if (v) return v
+  }
+  return ''
 }
 
 function splitNameList(value: string | undefined): string[] {
@@ -49,69 +76,129 @@ function splitNameList(value: string | undefined): string[] {
 function buildActors(sourceId: SourceId, values: Record<string, string>): RawActor[] {
   switch (sourceId) {
     case 'checkins':
-      return [{ label: values.personName ?? '', role: 'subject' }]
+      return [{
+        label: pick(values,
+          'personName', 'kisiAdi', 'kisiadi', 'adisoyadi', 'adsoyad', 'kisi', 'person',
+          'isim', 'ad', 'name', 'fullName', 'fullname',
+        ),
+        role: 'subject',
+      }]
     case 'messages':
       return [
-        { label: values.senderName ?? '', role: 'sender' },
-        { label: values.recipientName ?? '', role: 'recipient' },
+        {
+          label: pick(values,
+            'senderName', 'gonderen', 'gönderen', 'sender', 'kimden', 'gonderenad',
+            'gonderenisim', 'from',
+          ),
+          role: 'sender',
+        },
+        {
+          label: pick(values,
+            'recipientName', 'alici', 'alıcı', 'recipient', 'kime', 'aliciad',
+            'aliciisim', 'to',
+          ),
+          role: 'recipient',
+        },
       ]
     case 'sightings':
       return [
-        { label: values.personName ?? '', role: 'subject' },
-        { label: values.seenWith ?? '', role: 'companion' },
+        {
+          label: pick(values,
+            'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'görülenkişi',
+            'subject', 'kisi', 'person', 'isim', 'ad', 'name',
+          ),
+          role: 'subject',
+        },
+        {
+          label: pick(values,
+            'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla',
+            'beraberindekikisi', 'beraberkisi', 'with',
+          ),
+          role: 'companion',
+        },
       ]
     case 'notes': {
-      const author: RawActor = { label: values.authorName ?? '', role: 'author' }
-      const mentioned = splitNameList(values.mentionedPeople).map(
+      const author: RawActor = {
+        label: pick(values,
+          'authorName', 'author', 'yazar', 'yazan', 'yazarad', 'notAlani',
+          'noteAuthor', 'personName', 'kisi', 'isim', 'ad',
+        ),
+        role: 'author',
+      }
+      const mentionedRaw = pick(values,
+        'mentionedPeople', 'bahsedilenler', 'kisiIsmi', 'kisiismi',
+        'mentionepeople', 'mentioned',
+      )
+      const mentioned = splitNameList(mentionedRaw).map(
         (label): RawActor => ({ label, role: 'mentioned' }),
       )
       return [author, ...mentioned]
     }
     case 'tips':
-      return [{ label: values.suspectName ?? '', role: 'suspect' }]
+      return [{
+        label: pick(values,
+          'suspectName', 'suphe', 'şüpheli', 'suspect', 'kisi', 'person',
+          'supheli', 'isim', 'ad', 'name',
+        ),
+        role: 'suspect',
+      }]
   }
 }
 
 function buildRawTitle(sourceId: SourceId, values: Record<string, string>): string {
   switch (sourceId) {
-    case 'checkins':
-      return `${values.personName || 'Unknown person'} checked in`
-    case 'messages':
-      return `${values.senderName || 'Unknown sender'} → ${values.recipientName || 'Unknown recipient'}`
-    case 'sightings':
-      return `${values.personName || 'Unknown subject'} seen with ${values.seenWith || 'unknown companion'}`
-    case 'notes':
-      return `Note by ${values.authorName || 'Unknown author'}`
-    case 'tips':
-      return `Anonymous tip about ${values.suspectName || 'unknown suspect'}`
+    case 'checkins': {
+      const name = pick(values, 'personName', 'kisiAdi', 'kisiadi', 'kisi', 'person', 'isim', 'ad', 'name', 'fullName', 'fullname', 'adisoyadi', 'adsoyad')
+      return `${name || 'Unknown person'} checked in`
+    }
+    case 'messages': {
+      const sender = pick(values, 'senderName', 'gonderen', 'gönderen', 'sender', 'kimden', 'from')
+      const recipient = pick(values, 'recipientName', 'alici', 'alıcı', 'recipient', 'kime', 'to')
+      return `${sender || 'Unknown sender'} → ${recipient || 'Unknown recipient'}`
+    }
+    case 'sightings': {
+      const subject = pick(values, 'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'subject', 'kisi', 'person', 'isim', 'ad', 'name')
+      const companion = pick(values, 'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla', 'with')
+      return `${subject || 'Unknown subject'} seen with ${companion || 'unknown companion'}`
+    }
+    case 'notes': {
+      const author = pick(values, 'authorName', 'author', 'yazar', 'yazan', 'personName', 'kisi', 'isim', 'ad')
+      return `Note by ${author || 'Unknown author'}`
+    }
+    case 'tips': {
+      const suspect = pick(values, 'suspectName', 'suphe', 'şüpheli', 'suspect', 'supheli', 'kisi', 'isim', 'ad', 'name')
+      return `Anonymous tip about ${suspect || 'unknown suspect'}`
+    }
   }
 }
 
 function buildContent(sourceId: SourceId, values: Record<string, string>): string {
   switch (sourceId) {
     case 'messages':
-      return values.text ?? ''
+      return pick(values, 'text', 'mesaj', 'icerik', 'içerik', 'message', 'body')
     case 'tips':
-      return values.tip ?? ''
+      return pick(values, 'tip', 'not', 'bilgi', 'body', 'icerik', 'içerik', 'message', 'text')
     default:
-      return values.note ?? ''
+      return pick(values, 'note', 'not', 'aciklama', 'açıklama', 'description', 'icerik', 'içerik', 'text')
   }
 }
 
 function urgencyTone(urgency: string): RecordFlag['tone'] {
   const lower = urgency.toLowerCase()
-  if (lower.includes('high') || lower.includes('urgent')) return 'high'
-  if (lower.includes('medium') || lower.includes('mid')) return 'medium'
+  if (lower.includes('high') || lower.includes('urgent') || lower.includes('yüksek') || lower.includes('acil')) return 'high'
+  if (lower.includes('medium') || lower.includes('mid') || lower.includes('orta')) return 'medium'
   return 'low'
 }
 
 function buildFlags(sourceId: SourceId, values: Record<string, string>): RecordFlag[] {
   const flags: RecordFlag[] = []
-  if (sourceId === 'messages' && values.urgency) {
-    flags.push({ label: `Urgency: ${values.urgency}`, tone: urgencyTone(values.urgency) })
+  const urgency = pick(values, 'urgency', 'aciliyet', 'öncelik', 'oncelik')
+  if (sourceId === 'messages' && urgency) {
+    flags.push({ label: `Urgency: ${urgency}`, tone: urgencyTone(urgency) })
   }
-  if (sourceId === 'tips' && values.confidence) {
-    flags.push({ label: `Confidence: ${values.confidence}`, tone: urgencyTone(values.confidence) })
+  const confidence = pick(values, 'confidence', 'guven', 'güven', 'dogruluk', 'doğruluk')
+  if (sourceId === 'tips' && confidence) {
+    flags.push({ label: `Confidence: ${confidence}`, tone: urgencyTone(confidence) })
   }
   return flags
 }
@@ -138,8 +225,16 @@ export function normalizeSubmission(
   submission: JotformSubmission,
 ): NormalizedSubmission {
   const values = readAnswers(submission)
-  const timestamp = parseTimestamp(values.timestamp)
+  const timestampRaw = pick(values, 'timestamp', 'tarih', 'zaman', 'datetime', 'date', 'time', 'tarihSaat', 'tarihsaat')
+  const timestamp = parseTimestamp(timestampRaw)
   const rawActors = buildActors(source.id, values).filter((actor) => actor.label.trim().length > 0)
+
+  const locationRaw = pick(values,
+    'location', 'konum', 'yer', 'adres', 'address', 'lokasyon', 'place',
+  )
+  const coordinatesRaw = pick(values,
+    'coordinates', 'koordinat', 'geo', 'latlong', 'latLong', 'latlng',
+  )
 
   return {
     id: `${source.id}:${submission.id}`,
@@ -147,8 +242,8 @@ export function normalizeSubmission(
     sourceLabel: source.label,
     rawTitle: buildRawTitle(source.id, values),
     content: buildContent(source.id, values),
-    location: values.location?.trim() || 'Unknown location',
-    geo: parseGeo(values.coordinates),
+    location: locationRaw.trim() || 'Unknown location',
+    geo: parseGeo(coordinatesRaw),
     timestamp,
     sortTime: timestamp ? timestamp.getTime() : 0,
     timestampLabel: formatDateTime(timestamp),
