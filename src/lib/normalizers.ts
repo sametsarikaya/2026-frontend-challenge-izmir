@@ -78,8 +78,9 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
     case 'checkins':
       return [{
         label: pick(values,
+          'fullname', 'fullName',
           'personName', 'kisiAdi', 'kisiadi', 'adisoyadi', 'adsoyad', 'kisi', 'person',
-          'isim', 'ad', 'name', 'fullName', 'fullname',
+          'isim', 'ad', 'name',
         ),
         role: 'subject',
       }]
@@ -104,6 +105,7 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
       return [
         {
           label: pick(values,
+            'fullname', 'fullName',
             'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'görülenkişi',
             'subject', 'kisi', 'person', 'isim', 'ad', 'name',
           ),
@@ -120,7 +122,8 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
     case 'notes': {
       const author: RawActor = {
         label: pick(values,
-          'authorName', 'author', 'yazar', 'yazan', 'yazarad', 'notAlani',
+          'fullname', 'fullName',
+          'authorName', 'author', 'yazar', 'yazan', 'yazarad',
           'noteAuthor', 'personName', 'kisi', 'isim', 'ad',
         ),
         role: 'author',
@@ -148,7 +151,7 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
 function buildRawTitle(sourceId: SourceId, values: Record<string, string>): string {
   switch (sourceId) {
     case 'checkins': {
-      const name = pick(values, 'personName', 'kisiAdi', 'kisiadi', 'kisi', 'person', 'isim', 'ad', 'name', 'fullName', 'fullname', 'adisoyadi', 'adsoyad')
+      const name = pick(values, 'fullname', 'fullName', 'personName', 'kisiAdi', 'kisiadi', 'kisi', 'person', 'isim', 'ad', 'name', 'adisoyadi', 'adsoyad')
       return `${name || 'Unknown person'} checked in`
     }
     case 'messages': {
@@ -157,12 +160,12 @@ function buildRawTitle(sourceId: SourceId, values: Record<string, string>): stri
       return `${sender || 'Unknown sender'} → ${recipient || 'Unknown recipient'}`
     }
     case 'sightings': {
-      const subject = pick(values, 'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'subject', 'kisi', 'person', 'isim', 'ad', 'name')
+      const subject = pick(values, 'fullname', 'fullName', 'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'subject', 'kisi', 'person', 'isim', 'ad', 'name')
       const companion = pick(values, 'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla', 'with')
       return `${subject || 'Unknown subject'} seen with ${companion || 'unknown companion'}`
     }
     case 'notes': {
-      const author = pick(values, 'authorName', 'author', 'yazar', 'yazan', 'personName', 'kisi', 'isim', 'ad')
+      const author = pick(values, 'fullname', 'fullName', 'authorName', 'author', 'yazar', 'yazan', 'personName', 'kisi', 'isim', 'ad')
       return `Note by ${author || 'Unknown author'}`
     }
     case 'tips': {
