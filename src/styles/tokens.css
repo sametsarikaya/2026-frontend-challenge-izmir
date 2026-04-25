@@ -1,0 +1,51 @@
+:root {
+  /* Surface — warm cream paper */
+  --color-bg: oklch(97.5% 0.011 80);
+  --color-surface: oklch(95% 0.014 78);
+  --color-surface-raised: oklch(98.5% 0.008 80);
+
+  /* Borders */
+  --color-border: oklch(86% 0.014 75);
+  --color-border-strong: oklch(72% 0.018 70);
+
+  /* Ink */
+  --color-ink: oklch(20% 0.018 35);
+  --color-ink-muted: oklch(42% 0.014 50);
+  --color-ink-subtle: oklch(58% 0.012 60);
+
+  /* Accent — oxblood, dossier stamp */
+  --color-accent: oklch(46% 0.165 28);
+  --color-accent-soft: oklch(92% 0.045 28);
+  --color-accent-ink: oklch(30% 0.135 28);
+
+  /* Status */
+  --color-success: oklch(48% 0.12 145);
+  --color-warning: oklch(62% 0.15 75);
+  --color-danger: oklch(48% 0.18 25);
+
+  /* Spacing — 4pt scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Type scale */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  /* Layout */
+  --rail-width: 320px;
+  --header-height: 56px;
+}
