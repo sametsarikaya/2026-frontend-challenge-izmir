@@ -12,13 +12,14 @@ interface NavEntry {
 
 const NAV_ENTRIES: ReadonlyArray<NavEntry> = [
   { to: '/', label: 'Dashboard' },
+  { to: '/timeline', label: 'Timeline' },
   { to: '/map', label: 'Map' },
   { to: '/route', label: 'Route Flow' },
 ]
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-full flex flex-col bg-bg text-ink">
+    <div className="h-screen flex flex-col bg-bg text-ink overflow-hidden">
       <header className="flex items-center justify-between gap-6 border-b border-border bg-surface-raised px-6 h-[var(--header-height)]">
         <div className="flex items-center gap-3">
           <span className="case-stamp">case board</span>
@@ -47,7 +48,7 @@ export function AppShell({ children }: AppShellProps) {
           </ul>
         </nav>
       </header>
-      <main className="flex-1 min-h-0">{children}</main>
+      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
     </div>
   )
 }

@@ -105,15 +105,17 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
       return [
         {
           label: pick(values,
+            'personname', 'personName',
             'fullname', 'fullName',
-            'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'görülenkişi',
+            'kisiAdi', 'kisiadi', 'gorulenkisi', 'görülenkişi',
             'subject', 'kisi', 'person', 'isim', 'ad', 'name',
           ),
           role: 'subject',
         },
         {
           label: pick(values,
-            'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla',
+            'seenwith', 'seenWith',
+            'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla',
             'beraberindekikisi', 'beraberkisi', 'with',
           ),
           role: 'companion',
@@ -140,7 +142,8 @@ function buildActors(sourceId: SourceId, values: Record<string, string>): RawAct
     case 'tips':
       return [{
         label: pick(values,
-          'suspectName', 'suphe', 'şüpheli', 'suspect', 'kisi', 'person',
+          'suspectname', 'suspectName',
+          'suphe', 'şüpheli', 'suspect', 'kisi', 'person',
           'supheli', 'isim', 'ad', 'name',
         ),
         role: 'suspect',
@@ -160,8 +163,8 @@ function buildRawTitle(sourceId: SourceId, values: Record<string, string>): stri
       return `${sender || 'Unknown sender'} → ${recipient || 'Unknown recipient'}`
     }
     case 'sightings': {
-      const subject = pick(values, 'fullname', 'fullName', 'personName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'subject', 'kisi', 'person', 'isim', 'ad', 'name')
-      const companion = pick(values, 'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla', 'with')
+      const subject = pick(values, 'personname', 'personName', 'fullname', 'fullName', 'kisiAdi', 'kisiadi', 'gorulenkisi', 'subject', 'kisi', 'person', 'isim', 'ad', 'name')
+      const companion = pick(values, 'seenwith', 'seenWith', 'birlikte', 'companion', 'arkadasiyla', 'arkadaşıyla', 'with')
       return `${subject || 'Unknown subject'} seen with ${companion || 'unknown companion'}`
     }
     case 'notes': {
@@ -169,7 +172,7 @@ function buildRawTitle(sourceId: SourceId, values: Record<string, string>): stri
       return `Note by ${author || 'Unknown author'}`
     }
     case 'tips': {
-      const suspect = pick(values, 'suspectName', 'suphe', 'şüpheli', 'suspect', 'supheli', 'kisi', 'isim', 'ad', 'name')
+      const suspect = pick(values, 'suspectname', 'suspectName', 'suphe', 'şüpheli', 'suspect', 'supheli', 'kisi', 'isim', 'ad', 'name')
       return `Anonymous tip about ${suspect || 'unknown suspect'}`
     }
   }

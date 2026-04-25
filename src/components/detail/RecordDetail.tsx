@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CaseRecord, Person } from '@/types/domain'
 import { EmptyState } from '@/components/feedback/EmptyState'
 
@@ -6,7 +6,7 @@ interface RecordDetailProps {
   record: CaseRecord | null
   recordsById: Map<string, CaseRecord>
   peopleById: Map<string, Person>
-  onSelectRecord: (recordId: string) => void
+  onSelectRecord: (recordId: string | null) => void
   onSelectPerson: (personId: string) => void
 }
 
@@ -18,6 +18,22 @@ export function RecordDetail({
   onSelectPerson,
 }: RecordDetailProps) {
   const [showRaw, setShowRaw] = useState(false)
+
+  // Esc to close panel
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && record) {
+        onSelectRecord(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [record, onSelectRecord])
+
+  // Reset raw view when record changes
+  useEffect(() => {
+    setShowRaw(false)
+  }, [record?.id])
 
   if (!record) {
     return (
@@ -36,18 +52,38 @@ export function RecordDetail({
     .slice(0, 12)
 
   return (
-    <aside className="flex flex-col gap-5 p-6 border-l border-border bg-bg min-h-0 overflow-y-auto">
+    <aside className="flex flex-col gap-5 p-6 border-l border-border bg-bg min-h-0 overflow-y-auto animate-slide-in">
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <span className="case-stamp">{record.sourceLabel}</span>
-          {record.timestamp ? (
-            <time dateTime={record.timestamp.toISOString()} className="meta-mono">
-              {record.timestampLabel}
-            </time>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {record.timestamp ? (
+              <time dateTime={record.timestamp.toISOString()} className="meta-mono">
+                {record.timestampLabel}
+              </time>
+            ) : null}
+            {/* close button */}
+            <button
+              type="button"
+              onClick={() => onSelectRecord(null)}
+              className="w-7 h-7 flex items-center justify-center rounded border border-border text-ink-muted hover:text-ink hover:bg-surface transition-colors cursor-pointer"
+              aria-label="Close panel"
+              title="Close (Esc)"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="2" y1="2" x2="12" y2="12" />
+                <line x1="12" y1="2" x2="2" y2="12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <h2 className="display-serif text-2xl text-ink leading-tight">{record.title}</h2>
         <p className="meta-mono">{record.location}</p>
+        {record.geo && (
+          <p className="meta-mono text-ink-subtle text-[10px]">
+            {record.geo.lat.toFixed(4)}, {record.geo.lng.toFixed(4)}
+          </p>
+        )}
       </header>
 
       {record.flags.length > 0 ? (
@@ -91,7 +127,7 @@ export function RecordDetail({
                   <button
                     type="button"
                     onClick={() => onSelectPerson(actor.personId)}
-                    className="text-left text-sm text-ink hover:text-accent-ink underline-offset-2 hover:underline"
+                    className="text-left text-sm text-ink hover:text-accent-ink underline-offset-2 hover:underline cursor-pointer"
                   >
                     {actor.label}
                     {actor.rawLabel !== actor.label ? (
@@ -120,7 +156,7 @@ export function RecordDetail({
                 <button
                   type="button"
                   onClick={() => onSelectRecord(related.id)}
-                  className="w-full text-left flex items-center justify-between gap-3 py-2 border-b border-border hover:bg-surface"
+                  className="w-full text-left flex items-center justify-between gap-3 py-2 border-b border-border hover:bg-surface cursor-pointer"
                 >
                   <span className="flex flex-col min-w-0">
                     <span className="text-sm text-ink truncate">{related.title}</span>
@@ -140,7 +176,7 @@ export function RecordDetail({
         <button
           type="button"
           onClick={() => setShowRaw((value) => !value)}
-          className="meta-mono uppercase tracking-wider text-accent self-start hover:text-accent-ink underline underline-offset-4"
+          className="meta-mono uppercase tracking-wider text-accent self-start hover:text-accent-ink underline underline-offset-4 cursor-pointer"
         >
           {showRaw ? '— hide raw record' : '+ show raw record'}
         </button>

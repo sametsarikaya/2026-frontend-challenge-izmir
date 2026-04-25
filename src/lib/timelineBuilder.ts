@@ -10,6 +10,7 @@ import { buildHighlights, scorePeople } from './caseHighlights'
 import { resolveIdentities } from './identityResolver'
 import { buildResolvedTitle, buildSearchText, normalizeSubmission } from './normalizers'
 import { TURKISH_COLLATOR, normalizeText, uniqueValues } from './textNormalize'
+import type { NormalizedSubmission } from './normalizers'
 
 const SOURCE_PRIORITY: Partial<Record<SourceId, number>> = {
   checkins: 0,
@@ -20,6 +21,46 @@ const SOURCE_PRIORITY: Partial<Record<SourceId, number>> = {
 }
 
 const RELATED_TIME_WINDOW_MS = 45 * 60 * 1000
+
+/**
+ * Canonicalize locations: group by normalized (diacritics-stripped) form,
+ * then pick the most frequent spelling as the canonical display name.
+ * E.g. "Asansör" (3 hits) + "Asansor" (1 hit) → all become "Asansör".
+ */
+function buildLocationCanonMap(
+  entries: ReadonlyArray<NormalizedSubmission>,
+): Map<string, string> {
+  const buckets = new Map<string, Map<string, number>>()
+  for (const entry of entries) {
+    const raw = entry.location
+    if (!raw || raw === 'Unknown location') continue
+    const key = normalizeText(raw)
+    let bucket = buckets.get(key)
+    if (!bucket) {
+      bucket = new Map<string, number>()
+      buckets.set(key, bucket)
+    }
+    bucket.set(raw, (bucket.get(raw) ?? 0) + 1)
+  }
+  const canon = new Map<string, string>()
+  for (const [key, bucket] of buckets) {
+    let best = ''
+    let bestCount = 0
+    for (const [variant, count] of bucket) {
+      if (count > bestCount || (count === bestCount && variant.length > best.length)) {
+        best = variant
+        bestCount = count
+      }
+    }
+    canon.set(key, best)
+  }
+  return canon
+}
+
+function canonicalizeLocation(raw: string, canonMap: Map<string, string>): string {
+  if (!raw || raw === 'Unknown location') return raw
+  return canonMap.get(normalizeText(raw)) ?? raw
+}
 
 function buildLocationIndex(records: ReadonlyArray<CaseRecord>): Map<string, string[]> {
   const index = new Map<string, string[]>()
@@ -87,6 +128,12 @@ export function buildInvestigationModel(
       submissions.map((submission) => normalizeSubmission(source, submission)),
     )
     .sort((left, right) => left.sortTime - right.sortTime)
+
+  // Canonicalize locations so "Asansör" and "Asansor" merge
+  const locationCanon = buildLocationCanonMap(normalized)
+  for (const entry of normalized) {
+    entry.location = canonicalizeLocation(entry.location, locationCanon)
+  }
 
   const { people: resolvedPeople, peopleById, resolvedRecords } = resolveIdentities(
     normalized,
