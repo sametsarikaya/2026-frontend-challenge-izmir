@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useCaseData } from '@/hooks/useCaseData'
 import { useUrlState } from '@/hooks/useUrlState'
 import { RecordDetail } from '@/components/detail/RecordDetail'
@@ -6,9 +6,18 @@ import { ErrorCard } from '@/components/feedback/ErrorCard'
 import { SkeletonStack } from '@/components/feedback/SkeletonRow'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { normalizeText } from '@/lib/textNormalize'
-import type { CaseRecord, InvestigationModel, Person } from '@/types/domain'
+import type { CaseRecord, InvestigationModel, Person, SourceId } from '@/types/domain'
 
 const PODO_KEY = normalizeText('Podo')
+
+const SOURCE_FILTERS: { id: SourceId | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'checkins', label: 'Checkins' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'sightings', label: 'Sightings' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'tips', label: 'Tips' },
+]
 
 function findPodo(model: InvestigationModel): Person | null {
   return model.people.find((p) => normalizeText(p.displayName) === PODO_KEY) ?? null
@@ -16,6 +25,7 @@ function findPodo(model: InvestigationModel): Person | null {
 
 function TimelineLoaded({ model }: { model: InvestigationModel }) {
   const url = useUrlState()
+  const [activeFilter, setActiveFilter] = useState<SourceId | 'all'>('all')
   const selectedRecordId = url.selectedRecordId
   const selectedRecord = selectedRecordId
     ? model.recordsById.get(selectedRecordId) ?? null
@@ -23,7 +33,7 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
 
   const podo = findPodo(model)
 
-  const events = useMemo(() => {
+  const allEvents = useMemo(() => {
     if (!podo) return []
     return podo.recordIds
       .map((id) => model.recordsById.get(id))
@@ -31,7 +41,21 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
       .sort((a, b) => a.sortTime - b.sortTime)
   }, [podo, model])
 
-  if (!podo || events.length === 0) {
+  const events = useMemo(() => {
+    if (activeFilter === 'all') return allEvents
+    return allEvents.filter((e) => e.sourceId === activeFilter)
+  }, [allEvents, activeFilter])
+
+  // count per source for chip badges
+  const sourceCounts = useMemo(() => {
+    const counts = new Map<SourceId, number>()
+    for (const e of allEvents) {
+      counts.set(e.sourceId, (counts.get(e.sourceId) ?? 0) + 1)
+    }
+    return counts
+  }, [allEvents])
+
+  if (!podo || allEvents.length === 0) {
     return (
       <div className="p-8">
         <EmptyState
@@ -42,19 +66,44 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
     )
   }
 
-  const lastEvent = events[events.length - 1]
+  const lastEvent = allEvents[allEvents.length - 1]
 
   return (
     <div className="h-full flex min-h-0">
       {/* timeline column */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto py-8 px-6">
-          <header className="mb-8">
+          <header className="mb-6">
             <h1 className="display-serif text-2xl text-ink">Podo&rsquo;s Timeline</h1>
-            <p className="meta-mono mt-1">{events.length} events &middot; chronological order</p>
+            <p className="meta-mono mt-1">{allEvents.length} events &middot; chronological order</p>
           </header>
 
-          {/* suspicion cards */}
+          {/* source filter chips */}
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {SOURCE_FILTERS.map(({ id, label }) => {
+              const count = id === 'all' ? allEvents.length : (sourceCounts.get(id as SourceId) ?? 0)
+              if (id !== 'all' && count === 0) return null
+              const isActive = activeFilter === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveFilter(id)}
+                  className={[
+                    'px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer',
+                    isActive
+                      ? 'border-accent bg-accent-soft text-accent-ink'
+                      : 'border-border bg-surface-raised text-ink-muted hover:text-ink hover:bg-surface',
+                  ].join(' ')}
+                >
+                  {label}
+                  <span className="ml-1.5 text-[10px] opacity-70">{count}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* summary cards */}
           <div className="grid grid-cols-3 gap-3 mb-8">
             <div className="p-3 border border-border rounded bg-surface-raised">
               <span className="meta-mono block mb-1">Last Seen</span>
@@ -67,18 +116,31 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
             </div>
             <div className="p-3 border border-border rounded bg-surface-raised">
               <span className="meta-mono block mb-1">Records</span>
-              <span className="text-sm font-semibold text-ink">{events.length}</span>
+              <span className="text-sm font-semibold text-ink">{allEvents.length}</span>
             </div>
           </div>
+
+          {/* filtered count notice */}
+          {activeFilter !== 'all' && (
+            <p className="meta-mono mb-4">
+              Showing {events.length} of {allEvents.length} &mdash;{' '}
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className="text-accent-ink underline underline-offset-2 cursor-pointer"
+              >
+                clear filter
+              </button>
+            </p>
+          )}
 
           {/* vertical timeline */}
           <ol className="relative border-l-2 border-border ml-3">
             {events.map((event, i) => {
-              const isLast = i === events.length - 1
+              const isLast = i === events.length - 1 && activeFilter === 'all'
               const isSelected = event.id === selectedRecordId
               return (
                 <li key={event.id} className="mb-6 ml-6">
-                  {/* dot */}
                   <span
                     className={[
                       'absolute -left-[9px] w-4 h-4 rounded-full border-2',
@@ -89,7 +151,6 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
                           : 'bg-surface border-border',
                     ].join(' ')}
                   />
-                  {/* card */}
                   <button
                     type="button"
                     onClick={() => url.setSelectedRecord(event.id === selectedRecordId ? null : event.id)}
@@ -129,16 +190,18 @@ function TimelineLoaded({ model }: { model: InvestigationModel }) {
               )
             })}
 
-            {/* MISSING marker */}
-            <li className="mb-6 ml-6">
-              <span className="absolute -left-[9px] w-4 h-4 rounded-full bg-accent border-2 border-accent animate-pulse" />
-              <div className="p-3 rounded border border-accent bg-accent-soft">
-                <span className="meta-mono text-accent-ink font-bold">??? -- MISSING</span>
-                <p className="text-sm text-ink-muted mt-1">
-                  Podo was not seen after this point. The investigation continues.
-                </p>
-              </div>
-            </li>
+            {/* MISSING marker — only when showing all */}
+            {activeFilter === 'all' && (
+              <li className="mb-6 ml-6">
+                <span className="absolute -left-[9px] w-4 h-4 rounded-full bg-accent border-2 border-accent animate-pulse" />
+                <div className="p-3 rounded border border-accent bg-accent-soft">
+                  <span className="meta-mono text-accent-ink font-bold">??? -- MISSING</span>
+                  <p className="text-sm text-ink-muted mt-1">
+                    Podo was not seen after this point. The investigation continues.
+                  </p>
+                </div>
+              </li>
+            )}
           </ol>
         </div>
       </div>

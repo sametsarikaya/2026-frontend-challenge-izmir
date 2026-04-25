@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { CaseRecord } from '@/types/domain'
 import { defaultIcon, selectedIcon } from './markerIcons'
@@ -90,6 +90,10 @@ export function CaseMap({ records, selectedRecordId, onSelect }: CaseMapProps) {
               )}
             </div>
           </Popup>
+          <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+            <span className="text-xs font-medium">{record.title}</span>
+            {record.timeLabel && <span className="text-[10px] text-gray-500 ml-1">{record.timeLabel}</span>}
+          </Tooltip>
         </Marker>
       ))}
     </MapContainer>

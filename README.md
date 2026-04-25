@@ -41,10 +41,15 @@ committed.
 
 - `/` -- Dashboard. Three-column layout: filters and people list on the left,
   virtualized timeline in the center, record detail on the right.
+- `/timeline` -- Timeline. Chronological feed of all events attributed to Podo,
+  filterable by source type (check-ins, messages, sightings, notes, tips) with
+  per-type counts.
 - `/map` -- Investigation Map. All geo-tagged records plotted on a Leaflet map
-  with sidebar list and detail panel.
+  with custom markers per source type, sidebar list and detail panel.
 - `/route` -- Route Flow. Chronological stop-by-stop reconstruction of the
   most suspicious person's movements, shown as a polyline on the map.
+- `/suspects` -- Suspects. Ranked list of persons of interest with suspicion
+  scores and linked evidence records.
 
 ## Architecture
 

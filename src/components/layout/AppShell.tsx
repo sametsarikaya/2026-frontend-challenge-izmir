@@ -15,6 +15,7 @@ const NAV_ENTRIES: ReadonlyArray<NavEntry> = [
   { to: '/timeline', label: 'Timeline' },
   { to: '/map', label: 'Map' },
   { to: '/route', label: 'Route Flow' },
+  { to: '/suspects', label: 'Suspects' },
 ]
 
 export function AppShell({ children }: AppShellProps) {

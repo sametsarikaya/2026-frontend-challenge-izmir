@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { TimelinePage } from './pages/TimelinePage'
 import { MapPage } from './pages/MapPage'
 import { RoutePage } from './pages/RoutePage'
+import { SuspectsPage } from './pages/SuspectsPage'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/timeline" element={<TimelinePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/route" element={<RoutePage />} />
+          <Route path="/suspects" element={<SuspectsPage />} />
         </Routes>
       </AppShell>
     </ToastProvider>

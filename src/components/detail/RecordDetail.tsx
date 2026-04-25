@@ -66,14 +66,11 @@ export function RecordDetail({
             <button
               type="button"
               onClick={() => onSelectRecord(null)}
-              className="w-7 h-7 flex items-center justify-center rounded border border-border text-ink-muted hover:text-ink hover:bg-surface transition-colors cursor-pointer"
+              className="meta-mono uppercase tracking-wider text-accent hover:text-accent-ink underline underline-offset-4 cursor-pointer"
               aria-label="Close panel"
               title="Close (Esc)"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="2" y1="2" x2="12" y2="12" />
-                <line x1="12" y1="2" x2="2" y2="12" />
-              </svg>
+              close
             </button>
           </div>
         </div>
