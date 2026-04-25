@@ -21,7 +21,7 @@
     margin: 0;
     background: var(--color-bg);
     color: var(--color-ink);
-    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-family: 'Lexend', system-ui, sans-serif;
     font-size: var(--text-sm);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -48,7 +48,7 @@
 
 @layer components {
   .case-stamp {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: var(--text-2xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -59,8 +59,44 @@
   }
 
   .meta-mono {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
+  }
+
+  .display-serif {
+    font-family: 'Redaction', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
+  .stamp-redacted {
+    font-family: 'Redaction 35', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+
+  .skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-surface-raised) 65%, transparent),
+      transparent
+    );
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
   }
 }

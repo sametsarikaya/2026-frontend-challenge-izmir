@@ -18,9 +18,10 @@ const config: Config = {
         'accent-ink': 'var(--color-accent-ink)',
       },
       fontFamily: {
-        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
-        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Lexend', 'system-ui', 'sans-serif'],
+        display: ['Redaction', 'Georgia', 'serif'],
+        stamp: ['"Redaction 35"', 'Georgia', 'serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
