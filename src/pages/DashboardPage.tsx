@@ -1,15 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ErrorCard } from '@/components/feedback/ErrorCard'
 import { SkeletonStack } from '@/components/feedback/SkeletonRow'
 import { FilterPanel } from '@/components/filters/FilterPanel'
-import { EMPTY_FILTERS, isFilterEmpty } from '@/components/filters/filterState'
+import { isFilterEmpty } from '@/components/filters/filterState'
 import type { FilterState } from '@/components/filters/filterState'
+import { BreadcrumbNav } from '@/components/layout/BreadcrumbNav'
 import { HighlightCards } from '@/components/layout/HighlightCards'
 import { PersonList } from '@/components/people/PersonList'
 import { RecordDetail } from '@/components/detail/RecordDetail'
+import { SearchInput } from '@/components/search/SearchInput'
+import { SearchResults } from '@/components/search/SearchResults'
 import { TimelineFeed } from '@/components/timeline/TimelineFeed'
 import { useCaseData } from '@/hooks/useCaseData'
+import { useKeyboardNav } from '@/hooks/useKeyboardNav'
 import { useToast } from '@/hooks/useToast'
+import { useUrlState } from '@/hooks/useUrlState'
+import { searchAll } from '@/lib/fuzzySearch'
 import type { CaseRecord, InvestigationModel } from '@/types/domain'
 
 function applyFilters(
@@ -34,48 +40,92 @@ interface DashboardLoadedProps {
 }
 
 function DashboardLoaded({ model }: DashboardLoadedProps) {
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
+  const url = useUrlState()
   const { notify } = useToast()
+  const { query, filters, selectedPersonId, selectedRecordId } = url
 
   const filteredRecords = useMemo(
     () => applyFilters(model.records, filters, selectedPersonId),
     [model.records, filters, selectedPersonId],
   )
 
-  const selectedRecord = selectedRecordId ? model.recordsById.get(selectedRecordId) ?? null : null
+  const trimmedQuery = query.trim()
+  const searchResults = useMemo(() => {
+    if (!trimmedQuery) return null
+    return searchAll(trimmedQuery, filteredRecords, model.people)
+  }, [trimmedQuery, filteredRecords, model.people])
 
-  function handleSelectPerson(personId: string) {
-    setSelectedPersonId((current) => {
-      const next = current === personId ? null : personId
-      const person = model.peopleById.get(personId)
-      if (next !== null && person) {
-        notify(`Filtered timeline to ${person.displayName}`, 'info')
+  const selectedRecord = selectedRecordId ? model.recordsById.get(selectedRecordId) ?? null : null
+  const selectedPerson = selectedPersonId ? model.peopleById.get(selectedPersonId) ?? null : null
+
+  const navigableIds = useMemo(
+    () => (searchResults ? [] : filteredRecords.map((record) => record.id)),
+    [searchResults, filteredRecords],
+  )
+
+  const handleSelectRecord = useCallback(
+    (recordId: string | null) => {
+      url.setSelectedRecord(recordId)
+    },
+    [url],
+  )
+
+  const handleSelectPerson = useCallback(
+    (personId: string) => {
+      const isSame = url.selectedPersonId === personId
+      const next = isSame ? null : personId
+      url.setSelectedPerson(next)
+      if (next !== null) {
+        const person = model.peopleById.get(personId)
+        if (person) notify(`Filtered timeline to ${person.displayName}`, 'info')
         const firstRecord = model.records.find((record) => record.personIds.includes(personId))
-        if (firstRecord) setSelectedRecordId(firstRecord.id)
+        if (firstRecord) url.setSelectedRecord(firstRecord.id)
       } else {
         notify('Cleared person filter', 'info')
       }
-      return next
-    })
-  }
+    },
+    [model.peopleById, model.records, notify, url],
+  )
 
-  function handleFiltersChange(next: FilterState) {
-    const wasEmpty = isFilterEmpty(filters)
-    const becomesEmpty = isFilterEmpty(next)
-    setFilters(next)
-    if (!wasEmpty && becomesEmpty) {
-      notify('Filters cleared', 'info')
-    }
-  }
+  const handleFiltersChange = useCallback(
+    (next: FilterState) => {
+      const wasEmpty = isFilterEmpty(filters)
+      const becomesEmpty = isFilterEmpty(next)
+      url.setFilters(next)
+      if (!wasEmpty && becomesEmpty) {
+        notify('Filters cleared', 'info')
+      }
+    },
+    [filters, notify, url],
+  )
+
+  useKeyboardNav({
+    itemIds: navigableIds,
+    selectedId: selectedRecordId,
+    onSelect: handleSelectRecord,
+    onEscape: () => {
+      if (selectedRecordId) handleSelectRecord(null)
+      else if (selectedPersonId) url.setSelectedPerson(null)
+    },
+    enabled: searchResults === null,
+  })
+
+  const breadcrumbItems = useMemo(() => {
+    if (!selectedRecord) return []
+    const items = [
+      { label: 'Dashboard', onClick: () => url.resetAll() },
+      { label: selectedRecord.sourceLabel },
+    ]
+    items.push({ label: selectedRecord.title })
+    return items
+  }, [selectedRecord, url])
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <HighlightCards
         highlights={model.highlights}
-        onSelectPerson={handleSelectPerson}
-        onSelectRecord={(recordId) => setSelectedRecordId(recordId)}
+        onSelectPerson={(personId) => handleSelectPerson(personId)}
+        onSelectRecord={(recordId) => handleSelectRecord(recordId)}
       />
       <div className="grid grid-cols-[var(--rail-width)_minmax(0,1fr)_minmax(0,420px)] flex-1 min-h-0">
         <div className="flex flex-col min-h-0 border-r border-border">
@@ -95,17 +145,61 @@ function DashboardLoaded({ model }: DashboardLoadedProps) {
           </div>
         </div>
         <div className="flex flex-col min-h-0">
-          <TimelineFeed
-            records={filteredRecords}
-            selectedRecordId={selectedRecordId}
-            onSelect={setSelectedRecordId}
-          />
+          <div className="px-5 py-3 border-b border-border bg-surface-raised">
+            <SearchInput
+              query={query}
+              resultCount={
+                searchResults
+                  ? searchResults.records.length + searchResults.people.length
+                  : null
+              }
+              onChange={(next) => url.setQuery(next)}
+            />
+            {selectedPerson && !searchResults ? (
+              <div className="meta-mono mt-2 flex items-center justify-between gap-3">
+                <span>
+                  Person filter · <span className="text-accent-ink">{selectedPerson.displayName}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPerson(selectedPerson.id)}
+                  className="text-accent hover:text-accent-ink uppercase tracking-wider underline-offset-4 hover:underline"
+                >
+                  clear
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {selectedRecord && !searchResults ? (
+            <BreadcrumbNav items={breadcrumbItems} />
+          ) : null}
+          <div className="flex-1 min-h-0">
+            {searchResults ? (
+              <SearchResults
+                results={searchResults}
+                onSelectRecord={(recordId) => {
+                  handleSelectRecord(recordId)
+                  url.setQuery('')
+                }}
+                onSelectPerson={(personId) => {
+                  handleSelectPerson(personId)
+                  url.setQuery('')
+                }}
+              />
+            ) : (
+              <TimelineFeed
+                records={filteredRecords}
+                selectedRecordId={selectedRecordId}
+                onSelect={handleSelectRecord}
+              />
+            )}
+          </div>
         </div>
         <RecordDetail
           record={selectedRecord}
           recordsById={model.recordsById}
           peopleById={model.peopleById}
-          onSelectRecord={setSelectedRecordId}
+          onSelectRecord={handleSelectRecord}
           onSelectPerson={handleSelectPerson}
         />
       </div>
